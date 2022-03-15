@@ -1,13 +1,9 @@
-/*
- * not type checking this file because flow doesn't play well with
- * dynamically accessing methods on Array prototype
- */
-
-import { def } from '../util/index'
-
-const arrayProto = Array.prototype
-export const arrayMethods = Object.create(arrayProto)
-
+import { def } from '../util/index';
+/* 保存数组原型 */
+const arrayProto = Array.prototype;
+/* 创建新的对象arrayMethods，使其原型指向数组原型 */
+export const arrayMethods = Object.create(arrayProto);
+/* 被重写的七个数组方法 */
 const methodsToPatch = [
   'push',
   'pop',
@@ -15,31 +11,33 @@ const methodsToPatch = [
   'unshift',
   'splice',
   'sort',
-  'reverse'
-]
+  'reverse',
+];
 
-/**
- * Intercept mutating methods and emit events
- */
 methodsToPatch.forEach(function (method) {
-  // cache original method
-  const original = arrayProto[method]
-  def(arrayMethods, method, function mutator (...args) {
-    const result = original.apply(this, args)
-    const ob = this.__ob__
-    let inserted
+  /* 保存原生方法 */
+  const original = arrayProto[method];
+  /* def 方法定义在until文件夹lang文件中，作用是将传入的属性设为不可枚举 */
+  def(arrayMethods, method, function mutator(...args) {
+    /* 调用原生数组方法 */
+    const result = original.apply(this, args);
+    const ob = this.__ob__;
+    let inserted;
     switch (method) {
       case 'push':
       case 'unshift':
-        inserted = args
-        break
+        inserted = args;
+        break;
       case 'splice':
-        inserted = args.slice(2)
-        break
+        inserted = args.slice(2);
+        break;
     }
-    if (inserted) ob.observeArray(inserted)
-    // notify change
-    ob.dep.notify()
-    return result
-  })
-})
+    /* observeArray方法对 inserted中的元素进行遍历，
+      重新进行observe
+    */
+    if (inserted) ob.observeArray(inserted);
+    /* dep通知所有注册的观察者 */
+    ob.dep.notify();
+    return result;
+  });
+});
