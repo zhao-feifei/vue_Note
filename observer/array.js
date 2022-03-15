@@ -24,10 +24,12 @@ methodsToPatch.forEach(function (method) {
     const ob = this.__ob__;
     let inserted;
     switch (method) {
+      /* push、unshift会新增索引，所以要手动observer */
       case 'push':
       case 'unshift':
         inserted = args;
         break;
+      /* splice方法，如果传入了第三个参数，也会有索引加入，也要手动observer */
       case 'splice':
         inserted = args.slice(2);
         break;
@@ -38,6 +40,7 @@ methodsToPatch.forEach(function (method) {
     if (inserted) ob.observeArray(inserted);
     /* dep通知所有注册的观察者 */
     ob.dep.notify();
+    /* 返回原生数组方法的执行结果 */
     return result;
   });
 });
