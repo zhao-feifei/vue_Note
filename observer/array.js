@@ -1,9 +1,9 @@
 import { def } from '../util/index';
 /* 保存数组原型 */
 const arrayProto = Array.prototype;
-/* 创建新的对象arrayMethods，使其原型指向数组原型 */
+/* 增加代理原型 arrayMethods.__proto__ === arrayProto */
 export const arrayMethods = Object.create(arrayProto);
-/* 被重写的七个数组方法 */
+/* 被重写的七个数组方法，实际上只改写了三个方法 */
 const methodsToPatch = [
   'push',
   'pop',
@@ -17,7 +17,7 @@ const methodsToPatch = [
 methodsToPatch.forEach(function (method) {
   /* 保存原生方法 */
   const original = arrayProto[method];
-  /* def 方法定义在until文件夹lang文件中，作用是将传入的属性设为不可枚举 */
+  /* def 方法定义在until文件夹lang文件中，是对Object.defineProperty方法的封装 */
   def(arrayMethods, method, function mutator(...args) {
     /* 调用原生数组方法 */
     const result = original.apply(this, args);

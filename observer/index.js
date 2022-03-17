@@ -35,7 +35,8 @@ export class Observer {
     this.value = value;
     this.dep = new Dep();
     this.vmCount = 0;
-    /* 将Observer实例绑定到data的__ob__属性上 */
+    /* 让对象的__ob__属性指向Observer实例，这样
+    每一层的对象都有 __ob__属性，obj: { arr: [...] }就会变为obj: { arr: [..., __ob__: {} ], __ob__: {} }*/
     def(value, '__ob__', this);
     if (Array.isArray(value)) {
       /* 如果是数组，用修改后的数组方法替换掉原生方法，如果用户浏览器支持__proto__属性，则直接覆盖当前数组对象原型上的原生数组方法，如果不支持，则直接覆盖数组对象的原型 */
@@ -153,32 +154,32 @@ export function defineReactive(
       return value;
     },
     set: function reactiveSetter(newVal) {
+      /* 通过getter方法获取当前值，如果和新值一样则直接返回*/
       const value = getter ? getter.call(obj) : val;
-      /* eslint-disable no-self-compare */
       if (newVal === value || (newVal !== newVal && value !== value)) {
         return;
       }
-      /* eslint-enable no-self-compare */
       if (process.env.NODE_ENV !== 'production' && customSetter) {
         customSetter();
       }
-      // #7981: for accessor properties without setter
+      /* 这行代码没整明白 */
       if (getter && !setter) return;
+      /* 如果原本有setter方法则执行，没有则覆盖旧值 */
       if (setter) {
         setter.call(obj, newVal);
       } else {
         val = newVal;
       }
+      /* 新值重新进行observe，保证响应式 */
       childOb = !shallow && observe(newVal);
+      /* 通知所有观察者 */
       dep.notify();
     },
   });
 }
 
 /**
- * Set a property on an object. Adds the new property and
- * triggers change notification if the property doesn't
- * already exist.
+ * vue.$set方法，用于添加响应式数据
  */
 export function set(target: Array<any> | Object, key: any, val: any): any {
   if (
@@ -189,16 +190,27 @@ export function set(target: Array<any> | Object, key: any, val: any): any {
       `Cannot set reactive property on undefined, null, or primitive value: ${(target: any)}`
     );
   }
+
+  /* 如果目标值是数组，并且key为有效的数组索引 */
   if (Array.isArray(target) && isValidArrayIndex(key)) {
+    /* 对比数组的key值和数组长度，取较大值设置为数组的长度 */
     target.length = Math.max(target.length, key);
+    /* 替换目标值 */
     target.splice(key, 1, val);
     return val;
   }
+
+  /* 如果目标值是对象，key值有效并且不是原型上的key值 */
   if (key in target && !(key in Object.prototype)) {
     target[key] = val;
     return val;
   }
+  /* 获取target的Observer实例 */
   const ob = (target: any).__ob__;
+  /*
+    _isVue是标识vm实例自身被观察的标志位 ，_isVue为true则代表vm实例
+    vmCount判断是否为根节点，存在则代表是data的根节点，Vue 不允许在已经创建的实例上动态添加新的根级响应式属性
+  */
   if (target._isVue || (ob && ob.vmCount)) {
     process.env.NODE_ENV !== 'production' &&
       warn(
@@ -207,6 +219,7 @@ export function set(target: Array<any> | Object, key: any, val: any): any {
       );
     return val;
   }
+
   if (!ob) {
     target[key] = val;
     return val;
